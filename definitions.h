@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -34,3 +35,5 @@ struct oprNodeType {
 extern std::map<int, int> sym;
 extern std::map<std::string, int> tokenToYylVal;
 extern std::map<int, std::string> yylValToToken;
+
+extern std::ostream* outputPtr;

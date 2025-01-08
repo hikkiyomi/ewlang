@@ -12,6 +12,6 @@ build: run-parser run-lexer
 	g++ --std=c++20 y.tab.c lex.yy.c definitions.h interpreter.cpp -o parser
 
 run:
-	./$(PARSER)
+	./$(PARSER) input output
 
 build-and-run: build run

@@ -6,107 +6,116 @@
 static int lbl;
 
 int ex(nodeType* p) {
+    std::ostream& output = *outputPtr;
+
     int lbl1, lbl2;
 
     if (!p) return 0;
 
     switch (p->type) {
         case typeCon:
-            printf("\tpush\t%d\n", std::get<conNodeType*>(p->value)->value);
+            output << "\tpush\t" << std::get<conNodeType*>(p->value)->value
+                   << "\n";
             break;
         case typeId:
-            printf("\tpush\t%s\n",
-                   yylValToToken[std::get<idNodeType*>(p->value)->i].c_str());
+            output << "\tpush\t"
+                   << yylValToToken[std::get<idNodeType*>(p->value)->i] << "\n";
             break;
         case typeOpr:
             oprNodeType* node = std::get<oprNodeType*>(p->value);
+
             switch (node->oper) {
                 case WHILE:
-                    printf("L%03d:\n", lbl1 = lbl++);
+                    output << "L" << (lbl1 = lbl++) << ":\n";
                     ex(node->op[0]);
-                    printf("\tjz\tL%03d\n", lbl2 = lbl++);
+                    output << "\tjz\tL" << (lbl2 = lbl++) << "\n";
                     ex(node->op[1]);
-                    printf("\tjmp\tL%03d\n", lbl1);
-                    printf("L%03d:\n", lbl2);
+                    output << "\tjmp\tL" << lbl1 << "\n";
+                    output << "L" << lbl2 << ":\n";
                     break;
                 case IF:
                     ex(node->op[0]);
                     if (node->nops > 2) {
-                        printf("\tjz\tL%03d\n", lbl1 = lbl++);
+                        output << "\tjz\tL" << (lbl1 = lbl++) << "\n";
                         ex(node->op[1]);
-                        printf("\tjmp\tL%03d\n", lbl2 = lbl++);
-                        printf("L%03d:\n", lbl1);
+                        output << "\tjmp\tL" << (lbl2 = lbl++) << "\n";
+                        output << "L" << lbl1 << ":\n";
                         ex(node->op[2]);
-                        printf("L%03d:\n", lbl2);
+                        output << "L" << lbl2 << ":\n";
                     } else {
-                        printf("\tjz\tL%03d\n", lbl1 = lbl++);
+                        output << "\tjz\tL" << (lbl1 = lbl++) << "\n";
                         ex(node->op[1]);
-                        printf("L%03d:\n", lbl1);
+                        output << "L" << lbl1 << ":\n";
                     }
                     break;
                 case PRINT:
                     ex(node->op[0]);
-                    printf("\tprint\n");
+                    output << "\tprint\n";
                     break;
                 case '=':
                     ex(node->op[1]);
-                    printf(
-                        "\tpop\t%s\n",
-                        yylValToToken[std::get<idNodeType*>(node->op[0]->value)
-                                          ->i]
-                            .c_str());
+                    output << "\tpop\t"
+                           << yylValToToken
+                                  [std::get<idNodeType*>(node->op[0]->value)->i]
+                           << "\n";
                     break;
                 case UMINUS:
                     ex(node->op[0]);
-                    printf("\tneg\n");
+                    output << "\tneg\n";
                     break;
-                case CALL:
-                    for (int i = 0; i < node->nops; i++) {
+                case CALL: {
+                    for (int i = 0; i < node->nops - 1; i++) {
                         ex(node->op[i]);
                     }
 
-                    printf("\tcall\n");
+                    idNodeType* id =
+                        std::get<idNodeType*>(node->op.back()->value);
+
+                    output << "\tcall\t" << yylValToToken[id->i] << "\n";
                     break;
+                }
                 default:
                     ex(node->op[0]);
                     ex(node->op[1]);
                     switch (node->oper) {
                         case '+':
-                            printf("\tadd\n");
+                            output << "\tadd\n";
                             break;
                         case '-':
-                            printf("\tsub\n");
+                            output << "\tsub\n";
                             break;
                         case '*':
-                            printf("\tmul\n");
+                            output << "\tmul\n";
                             break;
                         case '/':
-                            printf("\tdiv\n");
+                            output << "\tdiv\n";
                             break;
                         case '%':
-                            printf("\tmod\n");
+                            output << "\tmod\n";
                             break;
                         case '<':
-                            printf("\tcompLT\n");
+                            output << "\tcompLT\n";
                             break;
                         case '>':
-                            printf("\tcompGT\n");
+                            output << "\tcompGT\n";
                             break;
                         case GE:
-                            printf("\tcompGE\n");
+                            output << "\tcompGE\n";
                             break;
                         case LE:
-                            printf("\tcompLE\n");
+                            output << "\tcompLE\n";
                             break;
                         case NE:
-                            printf("\tcompNE\n");
+                            output << "\tcompNE\n";
                             break;
                         case EQ:
-                            printf("\tcompEQ\n");
+                            output << "\tcompEQ\n";
                             break;
                     }
             }
     }
+
+    output.flush();
 
     return 1;
 }

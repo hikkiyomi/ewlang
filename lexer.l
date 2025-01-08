@@ -55,9 +55,5 @@ int getYylVal(const std::string& token) {
 %%
 
 int yywrap(void) {
-    for (const auto& [x, y] : yylValToToken) {
-        std::cout << x << " " << y << "\n";
-    }
-
     return 1;
 }

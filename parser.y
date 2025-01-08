@@ -1,12 +1,17 @@
 %{
+#include <cassert>
 #include <cstdarg>
 #include <cstdio>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <vector>
 #include <unordered_map>
 
 #include "definitions.h"
+
+extern FILE* yyin;
+std::ostream* outputPtr = &std::cout;
 
 int yylex();
 int yyerror(const char* s);
@@ -45,23 +50,24 @@ extern int ex(nodeType* p);
 %%
 
 program:
-       function '.'         { exit(0); }
+       function 
        ;
 
 function:
-        function stmt                   { ex($2); freeNode($2); }
+        // | function stmt                   { ex($2); freeNode($2); }
         | function function_declaration
-        |
         ;
 
 function_declaration:
                     FUNCTION VARIABLE '(' parameter_list ')' '{' stmt_list '}'
                     {
-                        std::cout << yylValToToken[$2] << "\n";
+                        *outputPtr << yylValToToken[$2] << ":\t";
 
                         for (const auto& param : functionParameters) {
-                            std::cout << param << "\n";
+                            *outputPtr << param << "\t";
                         }
+
+                        *outputPtr << "\n";
 
                         ex($7);
                         freeNode($7);
@@ -76,7 +82,7 @@ parameter_list:
               | VARIABLE {
                   functionParameters = std::vector<std::string>{yylValToToken[$1]};
               }
-              | { functionParameters = std::vector<std::string>{}; }
+              | { functionParameters.clear(); }
               ;
 
 stmt:
@@ -99,7 +105,7 @@ stmt_list:
 expr:
     INTEGER                     { $$ = con($1); }
     | VARIABLE                  { $$ = id($1); }
-    | VARIABLE '(' arg_list ')' { $$ = opr(CALL, 1, functionArgs); }             
+    | VARIABLE '(' arg_list ')' { $$ = opr(CALL, 2, id($1), functionArgs); }             
     | '-' expr %prec UMINUS     { $$ = opr(UMINUS, 1, $2); }
     | expr '+' expr             { $$ = opr('+', 2, $1, $3); }
     | expr '-' expr             { $$ = opr('-', 2, $1, $3); }
@@ -153,9 +159,12 @@ nodeType* opr(int oper, int nops, ...) {
     va_start(ap, nops);
 
     if (oper == CALL) {
+        nodeType* identifier = va_arg(ap, nodeType*);
         const auto& args = va_arg(ap, std::vector<nodeType*>);
+
         opr->op = args;
-        opr->nops = args.size();
+        opr->op.push_back(identifier);
+        opr->nops = args.size() + 1;
     } else {
         opr->op.assign(nops, nullptr);
 
@@ -187,13 +196,39 @@ void freeNode(nodeType* p) {
     delete p;
 }
 
+void closeStreams() {
+    if (yyin != NULL) {
+        fflush(yyin);
+        fclose(yyin);
+        yyin = NULL;
+    }
+
+    outputPtr->flush();
+
+    if (outputPtr != &std::cout) {
+        delete outputPtr;
+    }
+}
+
 int yyerror(const char* s) {
     std::cerr << s << "\n";
+    closeStreams();
+
     return 0;
 }
 
 int main(int argc, char** argv) {
+    if (argc >= 2) {
+        assert(yyin == NULL);
+        yyin = fopen(argv[1], "r");
+    }
+
+    if (argc >= 3) {
+        outputPtr = new std::ofstream(argv[2]);
+    }
+
     yyparse();
+    closeStreams();
 
     return 0;
 }
