@@ -35,5 +35,7 @@ struct oprNodeType {
 extern std::map<int, int> sym;
 extern std::map<std::string, int> tokenToYylVal;
 extern std::map<int, std::string> yylValToToken;
+extern std::vector<std::string> returnList;
 
+extern std::string outputFile;
 extern std::ostream* outputPtr;

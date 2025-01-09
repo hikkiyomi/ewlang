@@ -74,6 +74,8 @@ int ex(nodeType* p) {
                     output << "\tcall\t" << yylValToToken[id->i] << "\n";
                     break;
                 }
+                case RETURN: {
+                }
                 default:
                     ex(node->op[0]);
                     ex(node->op[1]);

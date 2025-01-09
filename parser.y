@@ -12,6 +12,7 @@
 
 extern FILE* yyin;
 std::ostream* outputPtr = &std::cout;
+std::string outputFile = "output";
 
 int yylex();
 int yyerror(const char* s);
@@ -19,6 +20,7 @@ int yyerror(const char* s);
 std::map<int, int> sym;
 std::vector<std::string> functionParameters;
 std::vector<nodeType*> functionArgs;
+std::vector<std::string>
 
 nodeType* opr(int oper, int nops, ...);
 nodeType* id(int i);
@@ -26,6 +28,7 @@ nodeType* con(int value);
 void freeNode(nodeType* p);
 
 extern int ex(nodeType* p);
+extern void readInstructions();
 %}
 
 %union {
@@ -36,7 +39,7 @@ extern int ex(nodeType* p);
 
 %token <iValue> INTEGER 
 %token <sIndex> VARIABLE
-%token WHILE IF PRINT LET FUNCTION CALL
+%token WHILE IF PRINT LET FUNCTION CALL RETURN
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -95,6 +98,7 @@ stmt:
     | IF '(' expr ')' stmt %prec IFX    { $$ = opr(IF, 2, $3, $5); }
     | IF '(' expr ')' stmt ELSE stmt    { $$ = opr(IF, 3, $3, $5, $7); }
     | '{' stmt_list '}'                 { $$ = $2; }
+    | RETURN arg_list ';'               { $$ = opr(RETURN, 0); }
     ;
 
 stmt_list:
@@ -126,6 +130,12 @@ arg_list:
         | expr            { functionArgs = std::vector<nodeType*>{$1}; }
         |                 { functionArgs.clear(); }
         ;
+
+return_list:
+           return_list ',' expr {  }
+           | expr               {  }
+           |                    {  }
+           ;
 
 %%
 
@@ -224,11 +234,14 @@ int main(int argc, char** argv) {
     }
 
     if (argc >= 3) {
-        outputPtr = new std::ofstream(argv[2]);
+        outputFile = std::string(argv[2]);
+        outputPtr = new std::ofstream(outputFile);
     }
 
     yyparse();
     closeStreams();
+
+    readInstructions();
 
     return 0;
 }
