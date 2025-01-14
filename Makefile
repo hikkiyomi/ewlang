@@ -1,5 +1,6 @@
 LEXER=lexer
 PARSER=parser
+BINARY=ewlang
 
 
 run-lexer:
@@ -9,9 +10,18 @@ run-parser:
 	bison -dy $(PARSER).y
 
 build: run-parser run-lexer
-	g++ --std=c++20 y.tab.c lex.yy.c definitions.h interpreter.cpp vm.cpp -o parser
+	g++ --std=c++20 \
+		y.tab.c \
+		lex.yy.c \
+		definitions.h \
+		vm_definitions.h \
+		interpreter.cpp \
+		vm.cpp \
+		nodes.h \
+		nodes.cpp \
+		-o $(BINARY)
 
 run:
-	./$(PARSER) input output
+	./$(BINARY) input output
 
 build-and-run: build run

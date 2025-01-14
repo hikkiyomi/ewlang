@@ -64,7 +64,7 @@ int ex(nodeType* p) {
                     output << "\tneg\n";
                     break;
                 case CALL: {
-                    for (int i = 0; i < node->nops - 1; i++) {
+                    for (int i = node->nops - 2; i >= 0; --i) {
                         ex(node->op[i]);
                     }
 
@@ -75,6 +75,12 @@ int ex(nodeType* p) {
                     break;
                 }
                 case RETURN: {
+                    for (int i = returnList.size() - 1; i >= 0; --i) {
+                        ex(returnList[i]);
+                    }
+
+                    output << "\treturn\n";
+                    break;
                 }
                 default:
                     ex(node->op[0]);

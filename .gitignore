@@ -1,5 +1,5 @@
 y.tab.*
-parser
+ewlang
 lex.yy.c
 input
 output

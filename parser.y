@@ -9,6 +9,7 @@
 #include <unordered_map>
 
 #include "definitions.h"
+#include "vm_definitions.h"
 
 extern FILE* yyin;
 std::ostream* outputPtr = &std::cout;
@@ -20,7 +21,7 @@ int yyerror(const char* s);
 std::map<int, int> sym;
 std::vector<std::string> functionParameters;
 std::vector<nodeType*> functionArgs;
-std::vector<std::string>
+std::vector<nodeType*> returnList;
 
 nodeType* opr(int oper, int nops, ...);
 nodeType* id(int i);
@@ -28,7 +29,6 @@ nodeType* con(int value);
 void freeNode(nodeType* p);
 
 extern int ex(nodeType* p);
-extern void readInstructions();
 %}
 
 %union {
@@ -39,7 +39,8 @@ extern void readInstructions();
 
 %token <iValue> INTEGER 
 %token <sIndex> VARIABLE
-%token WHILE IF PRINT LET FUNCTION CALL RETURN
+%token WHILE IF PRINT LET FUNCTION RETURN
+%nonassoc CALL
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -64,17 +65,16 @@ function:
 function_declaration:
                     FUNCTION VARIABLE '(' parameter_list ')' '{' stmt_list '}'
                     {
-                        *outputPtr << yylValToToken[$2] << ":\t";
+                        *outputPtr << yylValToToken[$2] << ":\n";
 
                         for (const auto& param : functionParameters) {
-                            *outputPtr << param << "\t";
+                            *outputPtr << "\tpop\t" << param << "\n";
                         }
-
-                        *outputPtr << "\n";
 
                         ex($7);
                         freeNode($7);
                         functionParameters.clear();
+                        *outputPtr << "\treturn\n";
                     }
                     ;
 
@@ -98,7 +98,7 @@ stmt:
     | IF '(' expr ')' stmt %prec IFX    { $$ = opr(IF, 2, $3, $5); }
     | IF '(' expr ')' stmt ELSE stmt    { $$ = opr(IF, 3, $3, $5, $7); }
     | '{' stmt_list '}'                 { $$ = $2; }
-    | RETURN arg_list ';'               { $$ = opr(RETURN, 0); }
+    | RETURN return_list ';'            { $$ = opr(RETURN, 0); }
     ;
 
 stmt_list:
@@ -107,22 +107,22 @@ stmt_list:
          ;
 
 expr:
-    INTEGER                     { $$ = con($1); }
-    | VARIABLE                  { $$ = id($1); }
-    | VARIABLE '(' arg_list ')' { $$ = opr(CALL, 2, id($1), functionArgs); }             
-    | '-' expr %prec UMINUS     { $$ = opr(UMINUS, 1, $2); }
-    | expr '+' expr             { $$ = opr('+', 2, $1, $3); }
-    | expr '-' expr             { $$ = opr('-', 2, $1, $3); }
-    | expr '*' expr             { $$ = opr('*', 2, $1, $3); }
-    | expr '/' expr             { $$ = opr('/', 2, $1, $3); }
-    | expr '%' expr             { $$ = opr('%', 2, $1, $3); }
-    | expr '<' expr             { $$ = opr('<', 2, $1, $3); }
-    | expr '>' expr             { $$ = opr('>', 2, $1, $3); }
-    | expr GE expr              { $$ = opr(GE, 2, $1, $3); }
-    | expr LE expr              { $$ = opr(LE, 2, $1, $3); }
-    | expr NE expr              { $$ = opr(NE, 2, $1, $3); }
-    | expr EQ expr              { $$ = opr(EQ, 2, $1, $3); }
-    | '(' expr ')'              { $$ = $2; }
+    INTEGER                                { $$ = con($1); }
+    | VARIABLE                             { $$ = id($1); }
+    | VARIABLE '(' arg_list ')' %prec CALL { $$ = opr(CALL, 2, id($1), functionArgs); }             
+    | '-' expr %prec UMINUS                { $$ = opr(UMINUS, 1, $2); }
+    | expr '+' expr                        { $$ = opr('+', 2, $1, $3); }
+    | expr '-' expr                        { $$ = opr('-', 2, $1, $3); }
+    | expr '*' expr                        { $$ = opr('*', 2, $1, $3); }
+    | expr '/' expr                        { $$ = opr('/', 2, $1, $3); }
+    | expr '%' expr                        { $$ = opr('%', 2, $1, $3); }
+    | expr '<' expr                        { $$ = opr('<', 2, $1, $3); }
+    | expr '>' expr                        { $$ = opr('>', 2, $1, $3); }
+    | expr GE expr                         { $$ = opr(GE, 2, $1, $3); }
+    | expr LE expr                         { $$ = opr(LE, 2, $1, $3); }
+    | expr NE expr                         { $$ = opr(NE, 2, $1, $3); }
+    | expr EQ expr                         { $$ = opr(EQ, 2, $1, $3); }
+    | '(' expr ')'                         { $$ = $2; }
     ;
 
 arg_list:
@@ -132,9 +132,9 @@ arg_list:
         ;
 
 return_list:
-           return_list ',' expr {  }
-           | expr               {  }
-           |                    {  }
+           return_list ',' expr { returnList.push_back($3); }
+           | expr               { returnList = std::vector<nodeType*>{$1}; }
+           |                    { returnList.clear(); }
            ;
 
 %%
@@ -241,7 +241,9 @@ int main(int argc, char** argv) {
     yyparse();
     closeStreams();
 
-    readInstructions();
+    VirtualMachine vm;
+
+    vm.Run();
 
     return 0;
 }
