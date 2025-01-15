@@ -1,7 +1,6 @@
 #include "bigint.h"
 
 #include <algorithm>
-#include <iostream>
 #include <stdexcept>
 
 BigInteger::BigInteger() : _value("0"), _is_negative(false) {}
