@@ -3,3 +3,4 @@ ewlang
 lex.yy.c
 input
 output
+optimized_ir.tmp

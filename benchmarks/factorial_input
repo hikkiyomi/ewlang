@@ -7,5 +7,5 @@ function factorial(x) {
 }
 
 function entrypoint() {
-    return factorial(20);
+    print factorial(20);
 }

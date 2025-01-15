@@ -34,7 +34,7 @@ std::shared_ptr<VmNode> IntegerNode::operator+(const VmNode& other) const {
 
 std::shared_ptr<VmNode> IntegerNode::operator-(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error("substracting integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);
@@ -45,7 +45,7 @@ std::shared_ptr<VmNode> IntegerNode::operator-(const VmNode& other) const {
 
 std::shared_ptr<VmNode> IntegerNode::operator*(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error("multiplying integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);
@@ -56,7 +56,7 @@ std::shared_ptr<VmNode> IntegerNode::operator*(const VmNode& other) const {
 
 std::shared_ptr<VmNode> IntegerNode::operator/(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error("dividing integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);
@@ -67,7 +67,7 @@ std::shared_ptr<VmNode> IntegerNode::operator/(const VmNode& other) const {
 
 std::shared_ptr<VmNode> IntegerNode::operator%(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error("taking remainder of integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);
@@ -78,7 +78,7 @@ std::shared_ptr<VmNode> IntegerNode::operator%(const VmNode& other) const {
 
 bool IntegerNode::operator<(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error("< integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);
@@ -88,7 +88,7 @@ bool IntegerNode::operator<(const VmNode& other) const {
 
 bool IntegerNode::operator>(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error("> integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);
@@ -98,7 +98,7 @@ bool IntegerNode::operator>(const VmNode& other) const {
 
 bool IntegerNode::operator<=(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error("<= integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);
@@ -108,7 +108,7 @@ bool IntegerNode::operator<=(const VmNode& other) const {
 
 bool IntegerNode::operator>=(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error(">= integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);
@@ -118,7 +118,7 @@ bool IntegerNode::operator>=(const VmNode& other) const {
 
 bool IntegerNode::operator!=(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error("!= integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);
@@ -128,7 +128,7 @@ bool IntegerNode::operator!=(const VmNode& other) const {
 
 bool IntegerNode::operator==(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {
-        throw std::runtime_error("summing integer and non-integer");
+        throw std::runtime_error("== integer and non-integer");
     }
 
     const IntegerNode& casted = static_cast<const IntegerNode&>(other);

@@ -119,8 +119,14 @@ BigInteger BigInteger::operator-(const BigInteger& other) const {
 }
 
 std::string BigInteger::operator*(int k) const {
-    if (!(0 <= k && k < 10)) {
+    if (!(0 <= k && k <= 10)) {
         throw std::runtime_error("multiplying biginteger by incorrect k");
+    }
+
+    if (k == 10) {
+        std::string result = _value;
+        result.push_back('0');
+        return result;
     }
 
     std::string result;
@@ -172,6 +178,11 @@ BigInteger BigInteger::operator/(const BigInteger& other) const {
         std::string result;
 
         for (int i = 0; i < _value.size(); ++i) {
+            if (_value[i] == '0' && buffer.empty()) {
+                result.push_back('0');
+                continue;
+            }
+
             buffer.push_back(_value[i]);
 
             BigInteger temp(buffer, false);
@@ -184,11 +195,12 @@ BigInteger BigInteger::operator/(const BigInteger& other) const {
                 continue;
             }
 
-            int toAdd = 1;
+            int toAdd = 0;
 
-            for (int k = 1; k <= 10; ++k) {
-                if (temp < BigInteger(divisor * k, false)) {
-                    toAdd = k - 1;
+            for (int k = 1; k <= 9; ++k) {
+                if (temp >= BigInteger(divisor * (toAdd + 1), false)) {
+                    ++toAdd;
+                } else {
                     break;
                 }
             }

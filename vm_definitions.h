@@ -86,6 +86,7 @@ public:
 
 private:
     void ReadInstructions();
+    void Optimize();
     void Execute();
 
 private:

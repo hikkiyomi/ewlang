@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <iostream>
@@ -5,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "definitions.h"
@@ -22,6 +24,17 @@ std::unordered_map<std::string, VmInstructionType> strToInstruction = {
     {"jmp", TYPE_JMP},       {"neg", TYPE_NEG},        {"call", TYPE_CALL},
     {"return", TYPE_RETURN}, {"array", TYPE_ARRAY},    {"access", TYPE_ACCESS},
     {"length", TYPE_LENGTH}, {"binAND", TYPE_BIN_AND}, {"binOR", TYPE_BIN_OR},
+};
+
+std::unordered_map<VmInstructionType, std::string> instructionTypeToStr = {
+    {TYPE_PUSH, "push"},     {TYPE_POP, "pop"},        {TYPE_PRINT, "print"},
+    {TYPE_ADD, "add"},       {TYPE_SUB, "sub"},        {TYPE_MUL, "mul"},
+    {TYPE_DIV, "div"},       {TYPE_MOD, "mod"},        {TYPE_COMPLT, "compLT"},
+    {TYPE_COMPGT, "compGT"}, {TYPE_COMPGE, "compGE"},  {TYPE_COMPLE, "compLE"},
+    {TYPE_COMPNE, "compNE"}, {TYPE_COMPEQ, "compEQ"},  {TYPE_JZ, "jz"},
+    {TYPE_JMP, "jmp"},       {TYPE_NEG, "neg"},        {TYPE_CALL, "call"},
+    {TYPE_RETURN, "return"}, {TYPE_ARRAY, "array"},    {TYPE_ACCESS, "access"},
+    {TYPE_LENGTH, "length"}, {TYPE_BIN_AND, "binAND"}, {TYPE_BIN_OR, "binOR"},
 };
 
 std::vector<std::string> split(const std::string& str, char delimeter = ' ') {
@@ -80,8 +93,42 @@ void RescueArray(Frame& frame, std::shared_ptr<VmNode> node) {
     }
 }
 
+void PrintOptimizedIR(const std::vector<Instruction>& instructions,
+                      const std::unordered_map<std::string, int>& marks) {
+    std::ofstream stream("optimized_ir.tmp");
+    std::unordered_map<int, std::vector<std::string>> revMarks;
+
+    for (const auto& [mark, index] : marks) {
+        revMarks[index].push_back(mark);
+    }
+
+    for (int i = 0; i < instructions.size(); ++i) {
+        auto markIter = revMarks.find(i);
+
+        if (markIter != revMarks.end()) {
+            for (const auto& mark : markIter->second) {
+                stream << mark << ":\n";
+            }
+        }
+
+        const auto& instruction = instructions[i];
+
+        stream << "\t" << instructionTypeToStr[instruction.type] << "\t";
+
+        for (const auto& arg : instruction.arguments) {
+            stream << arg << "\t";
+        }
+
+        stream << "\n";
+    }
+}
+
 void VirtualMachine::Run() {
     ReadInstructions();
+    Optimize();
+
+    PrintOptimizedIR(_instructions, _marks);
+
     Execute();
 }
 
@@ -132,6 +179,451 @@ bool IsNumber(const std::string& str) {
     }
 
     return true;
+}
+
+struct ConstantFoldingStackValue {
+    std::shared_ptr<IntegerNode> value;
+    bool isConstant;
+};
+
+void ApplyConstantFolding(std::vector<Instruction>* instructionsPtr,
+                          std::unordered_map<std::string, int>* marksPtr) {
+    std::vector<Instruction>& instructions = *instructionsPtr;
+    std::unordered_map<std::string, int>& marks = *marksPtr;
+
+    std::vector<std::pair<Instruction, int>> optimized;
+    std::vector<int> deleted;
+    std::vector<ConstantFoldingStackValue> stack;
+
+    for (int i = 0; i < instructions.size(); ++i) {
+        const auto& instruction = instructions[i];
+
+        switch (instruction.type) {
+            case TYPE_PUSH: {
+                if (instruction.arguments.size() != 1) {
+                    throw std::runtime_error(
+                        "push should have exactly one argument");
+                }
+
+                const std::string& arg = instruction.arguments[0];
+
+                if (IsNumber(arg)) {
+                    stack.push_back({std::make_shared<IntegerNode>(arg), true});
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_ADD: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    std::shared_ptr<VmNode> result =
+                        *lhs.value.get() + *rhs.value.get();
+
+                    stack.push_back(
+                        {std::static_pointer_cast<IntegerNode>(result), true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_SUB: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    std::shared_ptr<VmNode> result =
+                        *lhs.value.get() - *rhs.value.get();
+
+                    stack.push_back(
+                        {std::static_pointer_cast<IntegerNode>(result), true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_MUL: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    std::shared_ptr<VmNode> result =
+                        *lhs.value.get() * *rhs.value.get();
+
+                    stack.push_back(
+                        {std::static_pointer_cast<IntegerNode>(result), true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_DIV: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    std::shared_ptr<VmNode> result =
+                        *lhs.value.get() / *rhs.value.get();
+
+                    stack.push_back(
+                        {std::static_pointer_cast<IntegerNode>(result), true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_MOD: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    std::shared_ptr<VmNode> result =
+                        *lhs.value.get() % *rhs.value.get();
+
+                    stack.push_back(
+                        {std::static_pointer_cast<IntegerNode>(result), true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_COMPEQ: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    int result = (*lhs.value.get() == *rhs.value.get());
+
+                    std::shared_ptr<IntegerNode> tempNode =
+                        std::make_shared<IntegerNode>(result);
+
+                    stack.push_back({tempNode, true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_COMPGE: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    int result = (*lhs.value.get() >= *rhs.value.get());
+
+                    std::shared_ptr<IntegerNode> tempNode =
+                        std::make_shared<IntegerNode>(result);
+
+                    stack.push_back({tempNode, true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_COMPGT: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    int result = (*lhs.value.get() > *rhs.value.get());
+
+                    std::shared_ptr<IntegerNode> tempNode =
+                        std::make_shared<IntegerNode>(result);
+
+                    stack.push_back({tempNode, true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_COMPLE: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    int result = (*lhs.value.get() <= *rhs.value.get());
+
+                    std::shared_ptr<IntegerNode> tempNode =
+                        std::make_shared<IntegerNode>(result);
+
+                    stack.push_back({tempNode, true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_COMPLT: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    int result = (*lhs.value.get() < *rhs.value.get());
+
+                    std::shared_ptr<IntegerNode> tempNode =
+                        std::make_shared<IntegerNode>(result);
+
+                    stack.push_back({tempNode, true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_COMPNE: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    int result = (*lhs.value.get() != *rhs.value.get());
+
+                    std::shared_ptr<IntegerNode> tempNode =
+                        std::make_shared<IntegerNode>(result);
+
+                    stack.push_back({tempNode, true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_BIN_AND: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    int result = ((lhs.value.get()->Value() != "0") &&
+                                  (rhs.value.get()->Value() != "0"));
+
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>(result), true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            case TYPE_BIN_OR: {
+                if (stack.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for add");
+                }
+
+                ConstantFoldingStackValue rhs = stack.back();
+                stack.pop_back();
+
+                ConstantFoldingStackValue lhs = stack.back();
+                stack.pop_back();
+
+                if (lhs.isConstant && rhs.isConstant) {
+                    int result = ((lhs.value.get()->Value() != "0") ||
+                                  (rhs.value.get()->Value() != "0"));
+
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>(result), true});
+                    deleted.push_back(i);
+                } else {
+                    stack.push_back(
+                        {std::make_shared<IntegerNode>("0"), false});
+                }
+
+                break;
+            }
+            default:
+                break;
+        }
+
+        if (deleted.empty() || deleted.back() != i) {
+            optimized.push_back({instruction, i});
+        } else {
+            int lastDeleted = deleted.back();
+            deleted.pop_back();
+
+            const auto& [op1, index1] = optimized[optimized.size() - 1];
+            const auto& [op2, index2] = optimized[optimized.size() - 2];
+            optimized.pop_back();
+            optimized.pop_back();
+
+            deleted.push_back(index1);
+            deleted.push_back(index2);
+
+            Instruction append =
+                Instruction{TYPE_PUSH, {stack.back().value->Value()}};
+
+            optimized.push_back({std::move(append), i});
+        }
+    }
+
+    std::sort(deleted.begin(), deleted.end());
+    deleted.erase(std::unique(deleted.begin(), deleted.end()), deleted.end());
+
+    // This shifts all the marks, because some of the instructions were prunned.
+    for (auto& [mark, index] : marks) {
+        int lessThan = lower_bound(deleted.begin(), deleted.end(), index) -
+                       deleted.begin();
+        index -= lessThan;
+    }
+
+    std::vector<Instruction> newInstructions;
+
+    for (const auto& [instruction, index] : optimized) {
+        newInstructions.push_back(instruction);
+    }
+
+    *instructionsPtr = newInstructions;
+
+    /*for (const auto& [instruction, index] : optimized) {*/
+    /*    std::cout << instruction.type << " ";*/
+    /**/
+    /*    for (const auto& arg : instruction.arguments) {*/
+    /*        std::cout << arg << " ";*/
+    /*    }*/
+    /**/
+    /*    std::cout << "\n";*/
+    /*}*/
+    /**/
+    /*std::cout << "====\n";*/
+    /**/
+    /*for (auto& [mark, index] : marks) {*/
+    /*    std::cout << mark << " " << index << "\n";*/
+    /*}*/
+    /**/
+    /*std::cout << "\n====\n";*/
+}
+
+void VirtualMachine::Optimize() {
+    ApplyConstantFolding(&_instructions, &_marks);
 }
 
 void VirtualMachine::Execute() {
