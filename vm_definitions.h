@@ -58,6 +58,7 @@ enum VmInstructionType {
     TYPE_RETURN,
     TYPE_ARRAY,
     TYPE_ACCESS,
+    TYPE_LENGTH,
 };
 
 struct Instruction {
@@ -68,7 +69,11 @@ struct Instruction {
 };
 
 struct Frame {
-    std::unordered_map<std::string, std::shared_ptr<VmNode>> variables;
+    // Variables are containing only weak pointer to objects on current frame.
+    // This will break all cyclic dependencies and ARC will work correctly.
+    std::unordered_map<std::string, std::weak_ptr<VmNode>> variables;
+
+    std::vector<std::shared_ptr<VmNode>> objects;
 
     int returnAddress = -1;
 };
@@ -85,5 +90,5 @@ private:
     std::unordered_map<std::string, int> _marks;
     std::vector<Instruction> _instructions;
     std::vector<Frame> _frames;
-    std::vector<std::shared_ptr<VmNode>> _values;
+    std::vector<std::weak_ptr<VmNode>> _values;
 };

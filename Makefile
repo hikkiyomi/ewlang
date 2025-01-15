@@ -27,3 +27,13 @@ run:
 	./$(BINARY) input output
 
 build-and-run: build run
+
+disassemble:
+	g++ -S -o $(TARGET).s $(TARGET).cpp
+	as -o $(TARGET).o $(TARGET).s
+	objdump -d $(TARGET).o > $(TARGET).dump
+	nm $(TARGET).o > $(TARGET).mangling
+	rm $(TARGET).s $(TARGET).o
+
+decode:
+	c++filt $(TARGET)

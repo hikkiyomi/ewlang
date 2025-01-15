@@ -23,6 +23,8 @@ std::map<int, int> sym;
 std::vector<std::string> functionParameters;
 std::vector<nodeType*> functionArgs;
 std::vector<nodeType*> returnList;
+std::vector<nodeType*> variableList;
+std::vector<nodeType*> exprList;
 
 nodeType* opr(int oper, int nops, ...);
 nodeType* id(int i);
@@ -40,7 +42,8 @@ extern int ex(nodeType* p);
 
 %token <iValue> INTEGER 
 %token <sIndex> VARIABLE
-%token WHILE IF PRINT LET FUNCTION CALL RETURN ARRAY ACCESS
+%token LENGTH
+%token WHILE IF PRINT LET FUNCTION CALL RETURN ARRAY ACCESS MASSIGN
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -74,7 +77,7 @@ function_declaration:
                         ex($7);
                         freeNode($7);
                         functionParameters.clear();
-                        *outputPtr << "\treturn\n";
+                        *outputPtr << "\treturn\t0\n";
                     }
                     ;
 
@@ -96,11 +99,22 @@ stmt:
     | PRINT expr ';'                                           { $$ = opr(PRINT, 1, $2); }
     | VARIABLE '=' expr ';'                                    { $$ = opr('=', 2, id($1), $3); }
     | VARIABLE '[' expr ']' '=' expr ';'                       { $$ = opr('=', 3, id($1), $3, $6); }
+    | variable_list '=' expr_list ';'                          { $$ = opr(MASSIGN, 2, variableList, exprList); }
     | RETURN return_list ';'                                   { $$ = opr(RETURN, 1, returnList); }
     | WHILE '(' expr ')' '{' stmt_list '}'                     { $$ = opr(WHILE, 2, $3, $6); }
     | IF '(' expr ')' '{' stmt_list '}' %prec IFX              { $$ = opr(IF, 2, $3, $6); }
     | IF '(' expr ')' '{' stmt_list '}' ELSE '{' stmt_list '}' { $$ = opr(IF, 3, $3, $6, $10); }
     ;
+
+variable_list:
+             VARIABLE                     { variableList = std::vector<nodeType*>{id($1)}; }
+             | variable_list ',' VARIABLE { variableList.push_back(id($3)); }
+             ;
+
+expr_list:
+         expr                 { exprList = std::vector<nodeType*>{$1}; }
+         | expr_list ',' expr { exprList.push_back($3); }
+         ;
 
 stmt_list:
          stmt               { $$ = $1; }
@@ -110,7 +124,8 @@ stmt_list:
 expr:
     INTEGER                                { $$ = con($1); }
     | VARIABLE                             { $$ = id($1); }
-    | VARIABLE '(' arg_list ')' %prec CALL { $$ = opr(CALL, 2, id($1), functionArgs); }             
+    | LENGTH '(' VARIABLE ')'              { $$ = opr(LENGTH, 1, id($3)); }
+    | VARIABLE '(' arg_list ')'            { $$ = opr(CALL, 2, id($1), functionArgs); }             
     | VARIABLE '[' expr ']'                { $$ = opr(ACCESS, 2, id($1), $3); }
     | '-' expr %prec UMINUS                { $$ = opr(UMINUS, 1, $2); }
     | expr '+' expr                        { $$ = opr('+', 2, $1, $3); }
@@ -181,6 +196,16 @@ nodeType* opr(int oper, int nops, ...) {
         const auto& returns = va_arg(ap, std::vector<nodeType*>);
         opr->op = returns;
         opr->nops = returns.size();
+    } else if (oper == MASSIGN) {
+        const auto& variables = va_arg(ap, std::vector<nodeType*>);
+        const auto& exprs = va_arg(ap, std::vector<nodeType*>);
+        opr->op = variables;
+
+        for (const auto& expr : exprs) {
+            opr->op.push_back(expr);
+        }
+
+        opr->nops = opr->op.size();
     } else {
         opr->op.assign(nops, nullptr);
 

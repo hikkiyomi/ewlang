@@ -1,0 +1,21 @@
+function entrypoint() {
+    array nonPrime[100001];
+    nonPrime[0] = 1;
+    nonPrime[0] = 1;
+    i = 2;
+
+    while (i < len(nonPrime)) {
+        if (nonPrime[i] == 0) {
+            print i;
+
+            j = i * i;
+
+            while (j < len(nonPrime)) {
+                nonPrime[j] = 1;
+                j = j + i;
+            }
+        }
+
+        i = i + 1;
+    }
+}

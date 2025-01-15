@@ -61,8 +61,6 @@ int ex(nodeType* p) {
                         ex(node->op[i]);
                     }
 
-                    ex(node->op.back());
-
                     output << "\tpop\t" << (node->nops == 3 ? "arr\t" : "")
                            << yylValToToken[std::get<idNodeType*>(
                                                 node->op[0]->value)
@@ -71,10 +69,41 @@ int ex(nodeType* p) {
                     output << "\n";
 
                     break;
+                case MASSIGN: {
+                    std::vector<idNodeType*> ids;
+                    std::vector<nodeType*> exprs;
+
+                    for (int i = 0; i < node->nops; ++i) {
+                        if (node->op[i]->type == typeId) {
+                            ids.push_back(
+                                std::get<idNodeType*>(node->op[i]->value));
+                        } else {
+                            exprs.push_back(node->op[i]);
+                        }
+                    }
+
+                    for (int i = exprs.size() - 1; i >= 0; --i) {
+                        ex(exprs[i]);
+                    }
+
+                    for (int i = 0; i < ids.size(); ++i) {
+                        output << "\tpop\t" << yylValToToken[ids[i]->i] << "\n";
+                    }
+
+                    break;
+                }
                 case UMINUS:
                     ex(node->op[0]);
                     output << "\tneg\n";
                     break;
+                case LENGTH: {
+                    output << "\tlength\t"
+                           << yylValToToken
+                                  [std::get<idNodeType*>(node->op[0]->value)->i]
+                           << "\n";
+
+                    break;
+                }
                 case CALL: {
                     for (int i = node->nops - 2; i >= 0; --i) {
                         ex(node->op[i]);
@@ -91,7 +120,7 @@ int ex(nodeType* p) {
                         ex(node->op[i]);
                     }
 
-                    output << "\treturn\n";
+                    output << "\treturn\t" << node->nops << "\n";
                     break;
                 }
                 case ARRAY: {

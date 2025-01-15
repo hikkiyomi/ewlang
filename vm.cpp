@@ -21,6 +21,7 @@ std::unordered_map<std::string, VmInstructionType> strToInstruction = {
     {"compNE", TYPE_COMPNE}, {"compEQ", TYPE_COMPEQ}, {"jz", TYPE_JZ},
     {"jmp", TYPE_JMP},       {"neg", TYPE_NEG},       {"call", TYPE_CALL},
     {"return", TYPE_RETURN}, {"array", TYPE_ARRAY},   {"access", TYPE_ACCESS},
+    {"length", TYPE_LENGTH},
 };
 
 std::vector<std::string> split(const std::string& str, char delimeter = ' ') {
@@ -55,6 +56,29 @@ Instruction& Instruction::fromString(const std::string& instruction) {
 
     return *this;
 };
+
+void RescueArray(Frame& frame, std::shared_ptr<VmNode> node) {
+    /*std::cout << "here\n";*/
+    /**/
+    /*for (const auto& o : frame.objects) {*/
+    /*    std::cout << o->GetNodeType() << " " << o->Value() << "\n";*/
+    /*}*/
+    /**/
+    /*std::cout << "======\n";*/
+
+    if (node->GetNodeType() == NODE_TYPE_ARRAY) {
+        std::shared_ptr<ArrayNode> casted =
+            std::static_pointer_cast<ArrayNode>(node);
+
+        for (int i = 0; i < casted->Size(); i++) {
+            std::shared_ptr<VmNode> toSave = casted->Get(i).lock();
+            frame.objects.push_back(toSave);
+
+            // If the value is also array, rescue it recursively.
+            RescueArray(frame, toSave);
+        }
+    }
+}
 
 void VirtualMachine::Run() {
     ReadInstructions();
@@ -129,7 +153,8 @@ void VirtualMachine::Execute() {
                 const std::string& arg = instruction.arguments[0];
 
                 if (IsNumber(arg)) {
-                    _values.push_back(std::make_shared<IntegerNode>(arg));
+                    frame.objects.push_back(std::make_shared<IntegerNode>(arg));
+                    _values.push_back(frame.objects.back());
                 } else {
                     if (frame.variables.find(arg) == frame.variables.end()) {
                         throw std::runtime_error("unknown variable: " + arg);
@@ -156,19 +181,20 @@ void VirtualMachine::Execute() {
                     frame.variables[arg] = _values.back();
                     _values.pop_back();
                 } else {
-                    // We are setting the value to array.
+                    // We are setting the value to array cell.
                     const std::string& arg = instruction.arguments[1];
 
-                    std::shared_ptr<VmNode> value = _values.back();
+                    std::shared_ptr<IntegerNode> index =
+                        std::static_pointer_cast<IntegerNode>(
+                            _values.back().lock());
                     _values.pop_back();
 
-                    std::shared_ptr<IntegerNode> index =
-                        std::static_pointer_cast<IntegerNode>(_values.back());
+                    std::shared_ptr<VmNode> value = _values.back().lock();
                     _values.pop_back();
 
                     std::shared_ptr<ArrayNode> arrayNode =
                         std::static_pointer_cast<ArrayNode>(
-                            frame.variables[arg]);
+                            frame.variables[arg].lock());
 
                     arrayNode->Set(index->RealValue(), value);
                 }
@@ -181,7 +207,7 @@ void VirtualMachine::Execute() {
                         "value stack is empty, nothing to print");
                 }
 
-                std::cout << _values.back()->Value() << "\n";
+                std::cout << _values.back().lock()->Value() << "\n";
                 _values.pop_back();
 
                 break;
@@ -192,13 +218,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for add");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
-                _values.push_back(*lhs.get() + *rhs.get());
+                std::shared_ptr<VmNode> result = *lhs.get() + *rhs.get();
+
+                frame.objects.push_back(result);
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -208,13 +237,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for sub");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
-                _values.push_back(*lhs.get() - *rhs.get());
+                std::shared_ptr<VmNode> result = *lhs.get() - *rhs.get();
+
+                frame.objects.push_back(result);
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -224,13 +256,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for mul");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
-                _values.push_back(*lhs.get() * *rhs.get());
+                std::shared_ptr<VmNode> result = *lhs.get() * *rhs.get();
+
+                frame.objects.push_back(result);
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -240,13 +275,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for div");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
-                _values.push_back(*lhs.get() / *rhs.get());
+                std::shared_ptr<VmNode> result = *lhs.get() / *rhs.get();
+
+                frame.objects.push_back(result);
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -256,13 +294,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for mod");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
-                _values.push_back(*lhs.get() % *rhs.get());
+                std::shared_ptr<VmNode> result = *lhs.get() % *rhs.get();
+
+                frame.objects.push_back(result);
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -271,7 +312,7 @@ void VirtualMachine::Execute() {
                     throw std::runtime_error("value stack is empty for neg");
                 }
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 lhs->Negate();
 
                 break;
@@ -282,15 +323,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for compeq");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
                 int result = static_cast<int>(*lhs.get() == *rhs.get());
 
-                _values.push_back(std::make_shared<IntegerNode>(result));
+                frame.objects.push_back(std::make_shared<IntegerNode>(result));
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -300,15 +342,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for compge");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
                 int result = static_cast<int>(*lhs.get() >= *rhs.get());
 
-                _values.push_back(std::make_shared<IntegerNode>(result));
+                frame.objects.push_back(std::make_shared<IntegerNode>(result));
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -318,15 +361,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for compgt");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
                 int result = static_cast<int>(*lhs.get() > *rhs.get());
 
-                _values.push_back(std::make_shared<IntegerNode>(result));
+                frame.objects.push_back(std::make_shared<IntegerNode>(result));
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -336,15 +380,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for comple");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
                 int result = static_cast<int>(*lhs.get() <= *rhs.get());
 
-                _values.push_back(std::make_shared<IntegerNode>(result));
+                frame.objects.push_back(std::make_shared<IntegerNode>(result));
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -354,15 +399,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for complt");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
                 int result = static_cast<int>(*lhs.get() < *rhs.get());
 
-                _values.push_back(std::make_shared<IntegerNode>(result));
+                frame.objects.push_back(std::make_shared<IntegerNode>(result));
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -372,15 +418,16 @@ void VirtualMachine::Execute() {
                         "value stack does not contain 2 variables for compne");
                 }
 
-                std::shared_ptr<VmNode> rhs = _values.back();
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
                 _values.pop_back();
 
-                std::shared_ptr<VmNode> lhs = _values.back();
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
                 _values.pop_back();
 
                 int result = static_cast<int>(*lhs.get() != *rhs.get());
 
-                _values.push_back(std::make_shared<IntegerNode>(result));
+                frame.objects.push_back(std::make_shared<IntegerNode>(result));
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -406,14 +453,14 @@ void VirtualMachine::Execute() {
                         "jz should have exactly one argument");
                 }
 
-                if (_values.back()->GetNodeType() != NODE_TYPE_INTEGER) {
+                if (_values.back().lock()->GetNodeType() != NODE_TYPE_INTEGER) {
                     throw std::runtime_error(
                         "jz cannot check because top of the stack is not "
                         "integer");
                 }
 
                 // jz jumps if the top of the stack is 0
-                if (std::static_pointer_cast<IntegerNode>(_values.back())
+                if (std::static_pointer_cast<IntegerNode>(_values.back().lock())
                         ->RealValue()
                         .Value() == "0") {
                     // Substitute 1, because of ++currentInstruction at the end
@@ -443,10 +490,37 @@ void VirtualMachine::Execute() {
                 break;
             }
             case TYPE_RETURN: {
+                if (instruction.arguments.size() != 1) {
+                    throw std::runtime_error("return should have one argument");
+                }
+
                 // If returnAddress is -1, then we are returning from the
                 // entrypoint. Therefore, end the program.
                 if (frame.returnAddress == -1) {
                     return;
+                }
+
+                int amountOfReturned = stoi(instruction.arguments[0]);
+
+                if (_values.size() < amountOfReturned) {
+                    throw std::runtime_error(
+                        "amount of returned values is greater than the stack "
+                        "size");
+                }
+
+                // Objects that were returned should not be deallocated.
+                // Therefore, we push them at the previous frame.
+                auto& previousFrame = _frames[_frames.size() - 2];
+
+                for (int i = 0; i < amountOfReturned; ++i) {
+                    std::shared_ptr<VmNode> locked =
+                        _values[_values.size() - 1 - i].lock();
+
+                    previousFrame.objects.push_back(locked);
+
+                    // If this node is an array, we should rescue all objects
+                    // inside array.
+                    RescueArray(previousFrame, locked);
                 }
 
                 // Substitute 1, because of ++currentInstruction at the end
@@ -467,7 +541,7 @@ void VirtualMachine::Execute() {
                 }
 
                 const std::string& arg = instruction.arguments[0];
-                std::shared_ptr<VmNode> arraySizeNode = _values.back();
+                std::shared_ptr<VmNode> arraySizeNode = _values.back().lock();
 
                 _values.pop_back();
 
@@ -485,7 +559,11 @@ void VirtualMachine::Execute() {
                 }
 
                 int integerSize = stoi(arraySize.Value());
-                frame.variables[arg] = std::make_shared<ArrayNode>(integerSize);
+
+                frame.objects.push_back(
+                    std::make_shared<ArrayNode>(integerSize, frame));
+
+                frame.variables[arg] = frame.objects.back();
 
                 break;
             }
@@ -500,7 +578,7 @@ void VirtualMachine::Execute() {
                 }
 
                 const std::string& arg = instruction.arguments[0];
-                std::shared_ptr<VmNode> arrayIndexNode = _values.back();
+                std::shared_ptr<VmNode> arrayIndexNode = _values.back().lock();
 
                 _values.pop_back();
 
@@ -514,9 +592,34 @@ void VirtualMachine::Execute() {
                         ->RealValue();
 
                 std::shared_ptr<ArrayNode> arrayNode =
-                    std::static_pointer_cast<ArrayNode>(frame.variables[arg]);
+                    std::static_pointer_cast<ArrayNode>(
+                        frame.variables[arg].lock());
 
                 _values.push_back(arrayNode->Get(arrayIndex));
+
+                break;
+            }
+            case TYPE_LENGTH: {
+                if (instruction.arguments.size() != 1) {
+                    throw std::runtime_error("length needs 1 argument");
+                }
+
+                const std::string& arg = instruction.arguments[0];
+
+                std::shared_ptr<VmNode> node = frame.variables[arg].lock();
+
+                if (node->GetNodeType() != NODE_TYPE_ARRAY) {
+                    throw std::runtime_error(
+                        "cannot get length of non-array type");
+                }
+
+                std::shared_ptr<ArrayNode> arrayNode =
+                    std::static_pointer_cast<ArrayNode>(node);
+
+                frame.objects.push_back(
+                    std::make_shared<IntegerNode>(arrayNode->Size()));
+
+                _values.push_back(frame.objects.back());
 
                 break;
             }
@@ -527,5 +630,10 @@ void VirtualMachine::Execute() {
         }
 
         ++currentInstruction;
+
+        /*for (const auto& [name, value] : frame.variables) {*/
+        /*    std::cout << name << " " << value.use_count() << "\n";*/
+        /*}*/
+        /*std::cout << "==========\n";*/
     }
 }

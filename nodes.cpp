@@ -136,10 +136,11 @@ bool IntegerNode::operator==(const VmNode& other) const {
     return this->RealValue() == casted.RealValue();
 }
 
-ArrayNode::ArrayNode(size_t size)
-    : _value(std::vector<std::shared_ptr<VmNode>>(size)) {
+ArrayNode::ArrayNode(size_t size, Frame& frame)
+    : _value(std::vector<std::weak_ptr<VmNode>>(size)) {
     for (size_t i = 0; i < size; ++i) {
-        _value[i] = std::make_shared<IntegerNode>(0);
+        frame.objects.push_back(std::make_shared<IntegerNode>(0));
+        _value[i] = frame.objects.back();
     }
 }
 
@@ -150,9 +151,9 @@ std::string ArrayNode::Value() const {
 
     for (size_t i = 0; i < _value.size(); ++i) {
         if (i == _value.size() - 1) {
-            result += _value[i]->Value();
+            result += _value[i].lock()->Value();
         } else {
-            result += _value[i]->Value() + ", ";
+            result += _value[i].lock()->Value() + ", ";
         }
     }
 
@@ -161,19 +162,19 @@ std::string ArrayNode::Value() const {
 
 size_t ArrayNode::Size() const { return _value.size(); }
 
-const std::shared_ptr<VmNode>& ArrayNode::Get(size_t index) const {
+const std::weak_ptr<VmNode>& ArrayNode::Get(size_t index) const {
     return _value[index];
 }
 
-void ArrayNode::Set(size_t index, std::shared_ptr<VmNode> value) {
+void ArrayNode::Set(size_t index, std::weak_ptr<VmNode> value) {
     _value[index] = value;
 }
 
-const std::shared_ptr<VmNode>& ArrayNode::Get(const BigInteger& index) const {
+const std::weak_ptr<VmNode>& ArrayNode::Get(const BigInteger& index) const {
     return Get(ConvertBigIntegerToSizeT(index));
 }
 
-void ArrayNode::Set(const BigInteger& index, std::shared_ptr<VmNode> value) {
+void ArrayNode::Set(const BigInteger& index, std::weak_ptr<VmNode> value) {
     Set(ConvertBigIntegerToSizeT(index), value);
 }
 
