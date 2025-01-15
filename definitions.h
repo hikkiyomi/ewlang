@@ -20,7 +20,7 @@ struct nodeType {
 };
 
 struct conNodeType {
-    int value;
+    std::string value;
 };
 
 struct idNodeType {

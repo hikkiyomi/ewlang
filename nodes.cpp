@@ -5,15 +5,20 @@
 
 #include "vm_definitions.h"
 
-IntegerNode::IntegerNode(int value) : _value(value) {}
+IntegerNode::IntegerNode(int value) : _value(BigInteger(value)) {}
+
+IntegerNode::IntegerNode(const std::string& value)
+    : _value(BigInteger(value, value[0] == '-')) {}
+
+IntegerNode::IntegerNode(BigInteger value) : _value(std::move(value)) {}
 
 VmNodeType IntegerNode::GetNodeType() const { return NODE_TYPE_INTEGER; }
 
-std::string IntegerNode::Value() const { return std::to_string(_value); }
+std::string IntegerNode::Value() const { return _value.Value(); }
 
-void IntegerNode::Negate() { _value = -_value; }
+void IntegerNode::Negate() { _value.Negate(); }
 
-int IntegerNode::RealValue() const { return _value; }
+BigInteger IntegerNode::RealValue() const { return _value; }
 
 std::shared_ptr<VmNode> IntegerNode::operator+(const VmNode& other) const {
     if (this->GetNodeType() != other.GetNodeType()) {

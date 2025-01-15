@@ -25,6 +25,10 @@ int ex(nodeType* p) {
             oprNodeType* node = std::get<oprNodeType*>(p->value);
 
             switch (node->oper) {
+                case ';':
+                    ex(node->op[0]);
+                    ex(node->op[1]);
+                    break;
                 case WHILE:
                     output << "L" << (lbl1 = lbl++) << ":\n";
                     ex(node->op[0]);
@@ -75,8 +79,8 @@ int ex(nodeType* p) {
                     break;
                 }
                 case RETURN: {
-                    for (int i = returnList.size() - 1; i >= 0; --i) {
-                        ex(returnList[i]);
+                    for (int i = node->nops - 1; i >= 0; --i) {
+                        ex(node->op[i]);
                     }
 
                     output << "\treturn\n";

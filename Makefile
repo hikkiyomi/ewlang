@@ -10,7 +10,7 @@ run-parser:
 	bison -dy $(PARSER).y
 
 build: run-parser run-lexer
-	g++ --std=c++20 \
+	g++ -O3 --std=c++20 -Wall -Wextra -pedantic \
 		y.tab.c \
 		lex.yy.c \
 		definitions.h \
@@ -19,6 +19,8 @@ build: run-parser run-lexer
 		vm.cpp \
 		nodes.h \
 		nodes.cpp \
+		bigint.h \
+		bigint.cpp \
 		-o $(BINARY)
 
 run:

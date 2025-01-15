@@ -44,7 +44,7 @@ int getYylVal(const std::string& token) {
                         }
 
 [0-9]+  {
-            yylval.iValue = atoi(yytext);
+            yylval.iValue = yytext;
             return INTEGER;
         }
 

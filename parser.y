@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <stdexcept>
 #include <vector>
 #include <unordered_map>
 
@@ -25,22 +26,21 @@ std::vector<nodeType*> returnList;
 
 nodeType* opr(int oper, int nops, ...);
 nodeType* id(int i);
-nodeType* con(int value);
+nodeType* con(const char* value);
 void freeNode(nodeType* p);
 
 extern int ex(nodeType* p);
 %}
 
 %union {
-    int iValue;
+    const char* iValue;
     int sIndex;
     nodeType* nPtr;
 };
 
 %token <iValue> INTEGER 
 %token <sIndex> VARIABLE
-%token WHILE IF PRINT LET FUNCTION RETURN
-%nonassoc CALL
+%token WHILE IF PRINT LET FUNCTION CALL RETURN
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -89,16 +89,15 @@ parameter_list:
               ;
 
 stmt:
-    ';'                                 { $$ = opr(';', 2, NULL, NULL); }
-    | expr ';'                          { $$ = $1; }
-    | LET VARIABLE '=' expr ';'         { $$ = opr('=', 2, id($2), $4); }
-    | PRINT expr ';'                    { $$ = opr(PRINT, 1, $2); }
-    | VARIABLE '=' expr ';'             { $$ = opr('=', 2, id($1), $3); }
-    | WHILE '(' expr ')' stmt           { $$ = opr(WHILE, 2, $3, $5); }
-    | IF '(' expr ')' stmt %prec IFX    { $$ = opr(IF, 2, $3, $5); }
-    | IF '(' expr ')' stmt ELSE stmt    { $$ = opr(IF, 3, $3, $5, $7); }
-    | '{' stmt_list '}'                 { $$ = $2; }
-    | RETURN return_list ';'            { $$ = opr(RETURN, 0); }
+    ';'                                                        { $$ = opr(';', 2, NULL, NULL); }
+    | expr ';'                                                 { $$ = $1; }
+    | LET VARIABLE '=' expr ';'                                { $$ = opr('=', 2, id($2), $4); }
+    | PRINT expr ';'                                           { $$ = opr(PRINT, 1, $2); }
+    | VARIABLE '=' expr ';'                                    { $$ = opr('=', 2, id($1), $3); }
+    | RETURN return_list ';'                                   { $$ = opr(RETURN, 1, returnList); }
+    | WHILE '(' expr ')' '{' stmt_list '}'                     { $$ = opr(WHILE, 2, $3, $6); }
+    | IF '(' expr ')' '{' stmt_list '}' %prec IFX              { $$ = opr(IF, 2, $3, $6); }
+    | IF '(' expr ')' '{' stmt_list '}' ELSE '{' stmt_list '}' { $$ = opr(IF, 3, $3, $6, $10); }
     ;
 
 stmt_list:
@@ -139,11 +138,11 @@ return_list:
 
 %%
 
-nodeType* con(int value) {
+nodeType* con(const char* value) {
     nodeType* p = new nodeType;
 
     p->type = typeCon;
-    p->value = new conNodeType(value);
+    p->value = new conNodeType(std::move(std::string(value)));
 
     return p;
 }
@@ -175,6 +174,10 @@ nodeType* opr(int oper, int nops, ...) {
         opr->op = args;
         opr->op.push_back(identifier);
         opr->nops = args.size() + 1;
+    } else if (oper == RETURN) {
+        const auto& returns = va_arg(ap, std::vector<nodeType*>);
+        opr->op = returns;
+        opr->nops = returns.size();
     } else {
         opr->op.assign(nops, nullptr);
 
@@ -242,7 +245,6 @@ int main(int argc, char** argv) {
     closeStreams();
 
     VirtualMachine vm;
-
     vm.Run();
 
     return 0;

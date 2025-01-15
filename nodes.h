@@ -1,10 +1,15 @@
 #pragma once
 
+#include "bigint.h"
 #include "vm_definitions.h"
 
 class IntegerNode : public VmNode {
 public:
     IntegerNode(int value);
+
+    IntegerNode(const std::string& value);
+
+    IntegerNode(BigInteger value);
 
     ~IntegerNode() override = default;
 
@@ -15,7 +20,7 @@ public:
 
     void Negate() override;
 
-    int RealValue() const;
+    BigInteger RealValue() const;
 
 public:
     std::shared_ptr<VmNode> operator+(const VmNode& other) const override;
@@ -42,5 +47,5 @@ public:
     bool operator==(const VmNode& other) const override;
 
 private:
-    int _value;
+    BigInteger _value;
 };

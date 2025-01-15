@@ -1,3 +1,4 @@
+#include <cctype>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -67,7 +68,7 @@ void VirtualMachine::ReadInstructions() {
 
         if (colon != std::string::npos) {
             if (colon == 0) {
-                throw new std::runtime_error("The name of mark is empty.");
+                throw std::runtime_error("The name of mark is empty.");
             }
 
             _marks[str.substr(0, colon)] = _instructions.size();
@@ -78,23 +79,33 @@ void VirtualMachine::ReadInstructions() {
     }
 
     // DEBUGGING INFO
-    std::cout << "MARKS:\n";
-    for (const auto& [mark, number] : _marks) {
-        std::cout << mark << " " << number << "\n";
-    }
+    /*std::cout << "MARKS:\n";*/
+    /*for (const auto& [mark, number] : _marks) {*/
+    /*    std::cout << mark << " " << number << "\n";*/
+    /*}*/
+    /**/
+    /*std::cout << "INSTRUCTIONS:\n";*/
+    /*for (const auto& instruction : _instructions) {*/
+    /*    std::cout << instruction.type << " ";*/
+    /**/
+    /*    for (const auto& arg : instruction.arguments) {*/
+    /*        std::cout << arg << " ";*/
+    /*    }*/
+    /**/
+    /*    std::cout << "\n";*/
+    /*}*/
+    /**/
+    /*std::cout << "END OF DEBUGGING INFO\n===============\n";*/
+}
 
-    std::cout << "INSTRUCTIONS:\n";
-    for (const auto& instruction : _instructions) {
-        std::cout << instruction.type << " ";
-
-        for (const auto& arg : instruction.arguments) {
-            std::cout << arg << " ";
+bool IsNumber(const std::string& str) {
+    for (auto c : str) {
+        if (!std::isdigit(c)) {
+            return false;
         }
-
-        std::cout << "\n";
     }
 
-    std::cout << "END OF DEBUGGING INFO\n===============\n";
+    return true;
 }
 
 void VirtualMachine::Execute() {
@@ -108,28 +119,32 @@ void VirtualMachine::Execute() {
 
         switch (instruction.type) {
             case TYPE_PUSH: {
-                if (instruction.arguments.size() > 1) {
-                    throw new std::runtime_error(
-                        "push had more than one argument");
+                if (instruction.arguments.size() != 1) {
+                    throw std::runtime_error(
+                        "push should have exactly one argument");
                 }
 
                 const std::string& arg = instruction.arguments[0];
 
-                if (frame.variables.find(arg) == frame.variables.end()) {
-                    _values.push_back(std::make_shared<IntegerNode>(stoi(arg)));
+                if (IsNumber(arg)) {
+                    _values.push_back(std::make_shared<IntegerNode>(arg));
                 } else {
-                    _values.push_back(frame.variables.at(arg));
+                    if (frame.variables.find(arg) == frame.variables.end()) {
+                        throw std::runtime_error("unknown variable: " + arg);
+                    } else {
+                        _values.push_back(frame.variables.at(arg));
+                    }
                 }
 
                 break;
             }
             case TYPE_POP: {
                 if (instruction.arguments.size() != 1) {
-                    throw new std::runtime_error("pop needs 1 argument");
+                    throw std::runtime_error("pop needs 1 argument");
                 }
 
                 if (_values.empty()) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack is empty, nothing to pop");
                 }
 
@@ -142,7 +157,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_PRINT: {
                 if (_values.empty()) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack is empty, nothing to print");
                 }
 
@@ -153,7 +168,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_ADD: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for add");
                 }
 
@@ -169,7 +184,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_SUB: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for sub");
                 }
 
@@ -185,7 +200,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_MUL: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for mul");
                 }
 
@@ -201,7 +216,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_DIV: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for div");
                 }
 
@@ -217,7 +232,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_MOD: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for mod");
                 }
 
@@ -233,8 +248,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_NEG: {
                 if (_values.empty()) {
-                    throw new std::runtime_error(
-                        "value stack is empty for neg");
+                    throw std::runtime_error("value stack is empty for neg");
                 }
 
                 std::shared_ptr<VmNode> lhs = _values.back();
@@ -244,7 +258,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_COMPEQ: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for compeq");
                 }
 
@@ -262,7 +276,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_COMPGE: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for compge");
                 }
 
@@ -280,7 +294,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_COMPGT: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for compgt");
                 }
 
@@ -298,7 +312,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_COMPLE: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for comple");
                 }
 
@@ -316,7 +330,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_COMPLT: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for complt");
                 }
 
@@ -334,7 +348,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_COMPNE: {
                 if (_values.size() < 2) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "value stack does not contain 2 variables for compne");
                 }
 
@@ -352,7 +366,7 @@ void VirtualMachine::Execute() {
             }
             case TYPE_JMP: {
                 if (instruction.arguments.size() != 1) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "jmp should have exactly one argument");
                 }
 
@@ -364,34 +378,36 @@ void VirtualMachine::Execute() {
             }
             case TYPE_JZ: {
                 if (_values.empty()) {
-                    throw new std::runtime_error("value stack is empty for jz");
+                    throw std::runtime_error("value stack is empty for jz");
                 }
 
                 if (instruction.arguments.size() != 1) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "jz should have exactly one argument");
                 }
 
                 if (_values.back()->GetNodeType() != NODE_TYPE_INTEGER) {
-                    throw new std::runtime_error(
+                    throw std::runtime_error(
                         "jz cannot check because top of the stack is not "
                         "integer");
                 }
 
                 // jz jumps if the top of the stack is 0
-                if (!std::static_pointer_cast<IntegerNode>(_values.back())
-                         ->RealValue()) {
+                if (std::static_pointer_cast<IntegerNode>(_values.back())
+                        ->RealValue()
+                        .Value() == "0") {
                     // Substitute 1, because of ++currentInstruction at the end
                     // of the cycle.
                     currentInstruction = _marks[instruction.arguments[0]] - 1;
                 }
 
+                _values.pop_back();
+
                 break;
             }
             case TYPE_CALL: {
                 if (instruction.arguments.size() != 1) {
-                    throw new std::runtime_error(
-                        "call should have one argument");
+                    throw std::runtime_error("call should have one argument");
                 }
 
                 int jumpTo = _marks[instruction.arguments[0]];
@@ -421,8 +437,8 @@ void VirtualMachine::Execute() {
                 break;
             }
             default: {
-                throw new std::runtime_error("caught unknown instruction: " +
-                                             std::to_string(instruction.type));
+                throw std::runtime_error("caught unknown instruction: " +
+                                         std::to_string(instruction.type));
             }
         }
 
