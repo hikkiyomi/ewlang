@@ -11,6 +11,8 @@
 #include "nodes.h"
 #include "vm_definitions.h"
 
+constexpr size_t ARRAY_SIZE_LIMIT = 100'000'000;
+
 std::unordered_map<std::string, VmInstructionType> strToInstruction = {
     {"push", TYPE_PUSH},     {"pop", TYPE_POP},       {"print", TYPE_PRINT},
     {"add", TYPE_ADD},       {"sub", TYPE_SUB},       {"mul", TYPE_MUL},
@@ -18,7 +20,7 @@ std::unordered_map<std::string, VmInstructionType> strToInstruction = {
     {"compGT", TYPE_COMPGT}, {"compGE", TYPE_COMPGE}, {"compLE", TYPE_COMPLE},
     {"compNE", TYPE_COMPNE}, {"compEQ", TYPE_COMPEQ}, {"jz", TYPE_JZ},
     {"jmp", TYPE_JMP},       {"neg", TYPE_NEG},       {"call", TYPE_CALL},
-    {"return", TYPE_RETURN},
+    {"return", TYPE_RETURN}, {"array", TYPE_ARRAY},   {"access", TYPE_ACCESS},
 };
 
 std::vector<std::string> split(const std::string& str, char delimeter = ' ') {
@@ -139,8 +141,8 @@ void VirtualMachine::Execute() {
                 break;
             }
             case TYPE_POP: {
-                if (instruction.arguments.size() != 1) {
-                    throw std::runtime_error("pop needs 1 argument");
+                if (instruction.arguments.size() < 1) {
+                    throw std::runtime_error("pop needs at least 1 argument");
                 }
 
                 if (_values.empty()) {
@@ -148,10 +150,28 @@ void VirtualMachine::Execute() {
                         "value stack is empty, nothing to pop");
                 }
 
-                const std::string& arg = instruction.arguments[0];
+                if (instruction.arguments.size() == 1) {
+                    const std::string& arg = instruction.arguments[0];
 
-                frame.variables[arg] = _values.back();
-                _values.pop_back();
+                    frame.variables[arg] = _values.back();
+                    _values.pop_back();
+                } else {
+                    // We are setting the value to array.
+                    const std::string& arg = instruction.arguments[1];
+
+                    std::shared_ptr<VmNode> value = _values.back();
+                    _values.pop_back();
+
+                    std::shared_ptr<IntegerNode> index =
+                        std::static_pointer_cast<IntegerNode>(_values.back());
+                    _values.pop_back();
+
+                    std::shared_ptr<ArrayNode> arrayNode =
+                        std::static_pointer_cast<ArrayNode>(
+                            frame.variables[arg]);
+
+                    arrayNode->Set(index->RealValue(), value);
+                }
 
                 break;
             }
@@ -433,6 +453,70 @@ void VirtualMachine::Execute() {
                 // of the cycle.
                 currentInstruction = frame.returnAddress - 1;
                 _frames.pop_back();
+
+                break;
+            }
+            case TYPE_ARRAY: {
+                if (instruction.arguments.size() != 1) {
+                    throw std::runtime_error("array needs 1 argument");
+                }
+
+                if (_values.empty()) {
+                    throw std::runtime_error(
+                        "value stack is empty, no size for creating array");
+                }
+
+                const std::string& arg = instruction.arguments[0];
+                std::shared_ptr<VmNode> arraySizeNode = _values.back();
+
+                _values.pop_back();
+
+                if (arraySizeNode->GetNodeType() != NODE_TYPE_INTEGER) {
+                    throw std::runtime_error(
+                        "provided array size is not integer");
+                }
+
+                BigInteger arraySize =
+                    std::static_pointer_cast<IntegerNode>(arraySizeNode)
+                        ->RealValue();
+
+                if (arraySize > BigInteger(ARRAY_SIZE_LIMIT)) {
+                    throw std::runtime_error("provided array size is too big");
+                }
+
+                int integerSize = stoi(arraySize.Value());
+                frame.variables[arg] = std::make_shared<ArrayNode>(integerSize);
+
+                break;
+            }
+            case TYPE_ACCESS: {
+                if (instruction.arguments.size() != 1) {
+                    throw std::runtime_error("access needs 1 argument");
+                }
+
+                if (_values.empty()) {
+                    throw std::runtime_error(
+                        "value stack is empty, no index for accessing");
+                }
+
+                const std::string& arg = instruction.arguments[0];
+                std::shared_ptr<VmNode> arrayIndexNode = _values.back();
+
+                _values.pop_back();
+
+                if (arrayIndexNode->GetNodeType() != NODE_TYPE_INTEGER) {
+                    throw std::runtime_error(
+                        "provided array index is not integer");
+                }
+
+                BigInteger arrayIndex =
+                    std::static_pointer_cast<IntegerNode>(arrayIndexNode)
+                        ->RealValue();
+
+                std::shared_ptr<ArrayNode> arrayNode =
+                    std::static_pointer_cast<ArrayNode>(frame.variables[arg]);
+
+                _values.push_back(arrayNode->Get(arrayIndex));
 
                 break;
             }

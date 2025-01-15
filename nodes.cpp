@@ -3,6 +3,7 @@
 #include <memory>
 #include <stdexcept>
 
+#include "bigint.h"
 #include "vm_definitions.h"
 
 IntegerNode::IntegerNode(int value) : _value(BigInteger(value)) {}
@@ -134,3 +135,52 @@ bool IntegerNode::operator==(const VmNode& other) const {
 
     return this->RealValue() == casted.RealValue();
 }
+
+ArrayNode::ArrayNode(size_t size)
+    : _value(std::vector<std::shared_ptr<VmNode>>(size)) {
+    for (size_t i = 0; i < size; ++i) {
+        _value[i] = std::make_shared<IntegerNode>(0);
+    }
+}
+
+VmNodeType ArrayNode::GetNodeType() const { return NODE_TYPE_ARRAY; };
+
+std::string ArrayNode::Value() const {
+    std::string result;
+
+    for (size_t i = 0; i < _value.size(); ++i) {
+        if (i == _value.size() - 1) {
+            result += _value[i]->Value();
+        } else {
+            result += _value[i]->Value() + ", ";
+        }
+    }
+
+    return "[ " + result + " ]";
+}
+
+size_t ArrayNode::Size() const { return _value.size(); }
+
+const std::shared_ptr<VmNode>& ArrayNode::Get(size_t index) const {
+    return _value[index];
+}
+
+void ArrayNode::Set(size_t index, std::shared_ptr<VmNode> value) {
+    _value[index] = value;
+}
+
+const std::shared_ptr<VmNode>& ArrayNode::Get(const BigInteger& index) const {
+    return Get(ConvertBigIntegerToSizeT(index));
+}
+
+void ArrayNode::Set(const BigInteger& index, std::shared_ptr<VmNode> value) {
+    Set(ConvertBigIntegerToSizeT(index), value);
+}
+
+size_t ArrayNode::ConvertBigIntegerToSizeT(const BigInteger& value) const {
+    if (value >= BigInteger(Size())) {
+        throw std::runtime_error("index out of range while accessing array");
+    }
+
+    return stoi(value.Value());
+};

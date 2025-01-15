@@ -23,7 +23,7 @@ int getYylVal(const std::string& token) {
 
 %%
 
-[-()<>=+*/;{}.,%]  { return *yytext; }
+[-()<>=+*/;{}.,%\[\]]  { return *yytext; }
 
 ">="        return GE;
 "<="        return LE;
@@ -36,6 +36,7 @@ int getYylVal(const std::string& token) {
 "let"       return LET;
 "function"  return FUNCTION;
 "return"    return RETURN;
+"array"     return ARRAY;
 
 [_a-zA-Z][a-zA-Z0-9_]*  {
                             yylval.sIndex = getYylVal(yytext);

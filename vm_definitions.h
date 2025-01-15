@@ -8,6 +8,7 @@
 
 enum VmNodeType {
     NODE_TYPE_INTEGER,
+    NODE_TYPE_ARRAY,
 };
 
 class VmNode {
@@ -55,6 +56,8 @@ enum VmInstructionType {
     TYPE_NEG,
     TYPE_CALL,
     TYPE_RETURN,
+    TYPE_ARRAY,
+    TYPE_ACCESS,
 };
 
 struct Instruction {

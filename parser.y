@@ -40,7 +40,7 @@ extern int ex(nodeType* p);
 
 %token <iValue> INTEGER 
 %token <sIndex> VARIABLE
-%token WHILE IF PRINT LET FUNCTION CALL RETURN
+%token WHILE IF PRINT LET FUNCTION CALL RETURN ARRAY ACCESS
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -92,8 +92,10 @@ stmt:
     ';'                                                        { $$ = opr(';', 2, NULL, NULL); }
     | expr ';'                                                 { $$ = $1; }
     | LET VARIABLE '=' expr ';'                                { $$ = opr('=', 2, id($2), $4); }
+    | ARRAY VARIABLE '[' expr ']' ';'                          { $$ = opr(ARRAY, 2, id($2), $4); }
     | PRINT expr ';'                                           { $$ = opr(PRINT, 1, $2); }
     | VARIABLE '=' expr ';'                                    { $$ = opr('=', 2, id($1), $3); }
+    | VARIABLE '[' expr ']' '=' expr ';'                       { $$ = opr('=', 3, id($1), $3, $6); }
     | RETURN return_list ';'                                   { $$ = opr(RETURN, 1, returnList); }
     | WHILE '(' expr ')' '{' stmt_list '}'                     { $$ = opr(WHILE, 2, $3, $6); }
     | IF '(' expr ')' '{' stmt_list '}' %prec IFX              { $$ = opr(IF, 2, $3, $6); }
@@ -109,6 +111,7 @@ expr:
     INTEGER                                { $$ = con($1); }
     | VARIABLE                             { $$ = id($1); }
     | VARIABLE '(' arg_list ')' %prec CALL { $$ = opr(CALL, 2, id($1), functionArgs); }             
+    | VARIABLE '[' expr ']'                { $$ = opr(ACCESS, 2, id($1), $3); }
     | '-' expr %prec UMINUS                { $$ = opr(UMINUS, 1, $2); }
     | expr '+' expr                        { $$ = opr('+', 2, $1, $3); }
     | expr '-' expr                        { $$ = opr('-', 2, $1, $3); }

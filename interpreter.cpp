@@ -57,11 +57,19 @@ int ex(nodeType* p) {
                     output << "\tprint\n";
                     break;
                 case '=':
-                    ex(node->op[1]);
-                    output << "\tpop\t"
-                           << yylValToToken
-                                  [std::get<idNodeType*>(node->op[0]->value)->i]
-                           << "\n";
+                    for (int i = node->nops - 1; i >= 1; --i) {
+                        ex(node->op[i]);
+                    }
+
+                    ex(node->op.back());
+
+                    output << "\tpop\t" << (node->nops == 3 ? "arr\t" : "")
+                           << yylValToToken[std::get<idNodeType*>(
+                                                node->op[0]->value)
+                                                ->i];
+
+                    output << "\n";
+
                     break;
                 case UMINUS:
                     ex(node->op[0]);
@@ -84,6 +92,22 @@ int ex(nodeType* p) {
                     }
 
                     output << "\treturn\n";
+                    break;
+                }
+                case ARRAY: {
+                    ex(node->op.back());
+
+                    idNodeType* id = std::get<idNodeType*>(node->op[0]->value);
+
+                    output << "\tarray\t" << yylValToToken[id->i] << "\n";
+                    break;
+                }
+                case ACCESS: {
+                    ex(node->op.back());
+
+                    idNodeType* id = std::get<idNodeType*>(node->op[0]->value);
+
+                    output << "\taccess\t" << yylValToToken[id->i] << "\n";
                     break;
                 }
                 default:
