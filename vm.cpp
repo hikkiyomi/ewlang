@@ -14,14 +14,14 @@
 constexpr size_t ARRAY_SIZE_LIMIT = 100'000'000;
 
 std::unordered_map<std::string, VmInstructionType> strToInstruction = {
-    {"push", TYPE_PUSH},     {"pop", TYPE_POP},       {"print", TYPE_PRINT},
-    {"add", TYPE_ADD},       {"sub", TYPE_SUB},       {"mul", TYPE_MUL},
-    {"div", TYPE_DIV},       {"mod", TYPE_MOD},       {"compLT", TYPE_COMPLT},
-    {"compGT", TYPE_COMPGT}, {"compGE", TYPE_COMPGE}, {"compLE", TYPE_COMPLE},
-    {"compNE", TYPE_COMPNE}, {"compEQ", TYPE_COMPEQ}, {"jz", TYPE_JZ},
-    {"jmp", TYPE_JMP},       {"neg", TYPE_NEG},       {"call", TYPE_CALL},
-    {"return", TYPE_RETURN}, {"array", TYPE_ARRAY},   {"access", TYPE_ACCESS},
-    {"length", TYPE_LENGTH},
+    {"push", TYPE_PUSH},     {"pop", TYPE_POP},        {"print", TYPE_PRINT},
+    {"add", TYPE_ADD},       {"sub", TYPE_SUB},        {"mul", TYPE_MUL},
+    {"div", TYPE_DIV},       {"mod", TYPE_MOD},        {"compLT", TYPE_COMPLT},
+    {"compGT", TYPE_COMPGT}, {"compGE", TYPE_COMPGE},  {"compLE", TYPE_COMPLE},
+    {"compNE", TYPE_COMPNE}, {"compEQ", TYPE_COMPEQ},  {"jz", TYPE_JZ},
+    {"jmp", TYPE_JMP},       {"neg", TYPE_NEG},        {"call", TYPE_CALL},
+    {"return", TYPE_RETURN}, {"array", TYPE_ARRAY},    {"access", TYPE_ACCESS},
+    {"length", TYPE_LENGTH}, {"binAND", TYPE_BIN_AND}, {"binOR", TYPE_BIN_OR},
 };
 
 std::vector<std::string> split(const std::string& str, char delimeter = ' ') {
@@ -425,6 +425,46 @@ void VirtualMachine::Execute() {
                 _values.pop_back();
 
                 int result = static_cast<int>(*lhs.get() != *rhs.get());
+
+                frame.objects.push_back(std::make_shared<IntegerNode>(result));
+                _values.push_back(frame.objects.back());
+
+                break;
+            }
+            case TYPE_BIN_AND: {
+                if (_values.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for compne");
+                }
+
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
+                _values.pop_back();
+
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
+                _values.pop_back();
+
+                int result = static_cast<int>((lhs.get()->Value() != "0") &&
+                                              (rhs.get()->Value() != "0"));
+
+                frame.objects.push_back(std::make_shared<IntegerNode>(result));
+                _values.push_back(frame.objects.back());
+
+                break;
+            }
+            case TYPE_BIN_OR: {
+                if (_values.size() < 2) {
+                    throw std::runtime_error(
+                        "value stack does not contain 2 variables for compne");
+                }
+
+                std::shared_ptr<VmNode> rhs = _values.back().lock();
+                _values.pop_back();
+
+                std::shared_ptr<VmNode> lhs = _values.back().lock();
+                _values.pop_back();
+
+                int result = static_cast<int>((lhs.get()->Value() != "0") ||
+                                              (rhs.get()->Value() != "0"));
 
                 frame.objects.push_back(std::make_shared<IntegerNode>(result));
                 _values.push_back(frame.objects.back());

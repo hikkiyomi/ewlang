@@ -39,6 +39,8 @@ int getYylVal(const std::string& token) {
 "array"     return ARRAY;
 "len"       return LENGTH;
 "for"       return FOR;
+"&&"        return BIN_AND;
+"||"        return BIN_OR;
 
 [_a-zA-Z][a-zA-Z0-9_]*  {
                             yylval.sIndex = getYylVal(yytext);

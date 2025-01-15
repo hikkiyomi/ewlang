@@ -48,6 +48,7 @@ extern int ex(nodeType* p, bool push = true);
 %nonassoc ELSE
 
 %left GE LE EQ NE '>' '<'
+%left BIN_AND BIN_OR
 %left '+' '-'
 %left '*' '/' '%'
 %nonassoc UMINUS
@@ -148,6 +149,8 @@ expr:
     | expr LE expr                         { $$ = opr(LE, 2, $1, $3); }
     | expr NE expr                         { $$ = opr(NE, 2, $1, $3); }
     | expr EQ expr                         { $$ = opr(EQ, 2, $1, $3); }
+    | expr BIN_AND expr                    { $$ = opr(BIN_AND, 2, $1, $3); }
+    | expr BIN_OR expr                     { $$ = opr(BIN_OR, 2, $1, $3); }
     | '(' expr ')'                         { $$ = $2; }
     ;
 

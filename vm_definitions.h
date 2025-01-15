@@ -59,6 +59,8 @@ enum VmInstructionType {
     TYPE_ARRAY,
     TYPE_ACCESS,
     TYPE_LENGTH,
+    TYPE_BIN_AND,
+    TYPE_BIN_OR,
 };
 
 struct Instruction {
