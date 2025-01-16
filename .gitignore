@@ -1,3 +1,7 @@
 y.tab.*
-parser
+ewlang
 lex.yy.c
+input
+output
+optimized_ir.tmp
+*.ew
