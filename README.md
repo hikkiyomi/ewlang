@@ -1,7 +1,7 @@
 # Ewlang
 
 A simple experimental programming language with interpreter, virtual machine, its own IR with optimizations and JIT compiler (almost). \
-Named Ewlang because... ew, this code stinks. \
+Named Ewlang because... ew, this code stinks.
 
 ---
 
