@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <stack>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -185,6 +186,16 @@ struct ConstantFoldingStackValue {
     std::shared_ptr<IntegerNode> value;
     bool isConstant;
 };
+
+void ShiftMarks(std::unordered_map<std::string, int>* marks, const std::vector<int>& deleted) {
+    // This shifts all the marks, because some of the instructions were prunned.
+    for (auto& [mark, index] : *marks) {
+        int lessThan = lower_bound(deleted.begin(), deleted.end(), index) -
+                       deleted.begin();
+        index -= lessThan;
+    }
+}
+
 
 void ApplyConstantFolding(std::vector<Instruction>* instructionsPtr,
                           std::unordered_map<std::string, int>* marksPtr) {
@@ -588,12 +599,7 @@ void ApplyConstantFolding(std::vector<Instruction>* instructionsPtr,
     std::sort(deleted.begin(), deleted.end());
     deleted.erase(std::unique(deleted.begin(), deleted.end()), deleted.end());
 
-    // This shifts all the marks, because some of the instructions were prunned.
-    for (auto& [mark, index] : marks) {
-        int lessThan = lower_bound(deleted.begin(), deleted.end(), index) -
-                       deleted.begin();
-        index -= lessThan;
-    }
+    ShiftMarks(&marks, deleted);
 
     std::vector<Instruction> newInstructions;
 
@@ -601,7 +607,7 @@ void ApplyConstantFolding(std::vector<Instruction>* instructionsPtr,
         newInstructions.push_back(instruction);
     }
 
-    *instructionsPtr = newInstructions;
+    *instructionsPtr = std::move(newInstructions);
 
     /*for (const auto& [instruction, index] : optimized) {*/
     /*    std::cout << instruction.type << " ";*/
@@ -622,8 +628,79 @@ void ApplyConstantFolding(std::vector<Instruction>* instructionsPtr,
     /*std::cout << "\n====\n";*/
 }
 
+void RemoveDeadCode(std::vector<Instruction>* instructionsPtr, std::unordered_map<std::string, int>* marksPtr) {
+    auto& instructions = *instructionsPtr;
+    auto& marks = *marksPtr;
+
+    /*for (const auto& instruction : instructions) {*/
+    /*    std::cout << instruction.type << " ";*/
+    /**/
+    /*    for (const auto& arg : instruction.arguments) {*/
+    /*        std::cout << arg << " ";*/
+    /*    }*/
+    /**/
+    /*    std::cout << "\n";*/
+    /*}*/
+    /**/
+    /*std::cout << "====\n";*/
+    /**/
+    /*for (auto& [mark, index] : marks) {*/
+    /*    std::cout << mark << " " << index << "\n";*/
+    /*}*/
+    /**/
+    /*std::cout << "\n====\n";*/
+
+    std::vector<bool> visited(instructions.size(), false);
+    std::stack<int> s;
+
+    s.push(marks["entrypoint"]);
+
+    while (!s.empty()) {
+        int index = s.top();
+        s.pop();
+
+        if (visited[index]) {
+            continue;
+        }
+
+        visited[index] = true;
+        const auto& instruction = instructions[index];
+
+        if (instruction.type == TYPE_RETURN) {
+            continue;
+        }
+
+        if (instruction.type == TYPE_JMP) {
+            s.push(marks[instruction.arguments[0]]);
+            continue;
+        }
+
+        s.push(index + 1);
+
+        if (instruction.type == TYPE_JZ || instruction.type == TYPE_CALL) {
+            s.push(marks[instruction.arguments[0]]);
+        }
+    }
+
+    std::vector<Instruction> optimized;
+    std::vector<int> deleted;
+
+    for (int i = 0; i < instructions.size(); ++i) {
+        if (visited[i]) {
+            optimized.push_back(instructions[i]);
+        } else {
+            deleted.push_back(i);
+        }
+    }
+
+    ShiftMarks(&marks, deleted);
+
+    *instructionsPtr = std::move(optimized);
+}
+
 void VirtualMachine::Optimize() {
     ApplyConstantFolding(&_instructions, &_marks);
+    RemoveDeadCode(&_instructions, &_marks);
 }
 
 void VirtualMachine::Execute() {
