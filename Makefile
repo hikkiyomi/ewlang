@@ -21,10 +21,11 @@ build: run-parser run-lexer
 		nodes.cpp \
 		bigint.h \
 		bigint.cpp \
+		importer.cpp \
 		-o $(BINARY)
 
 run:
-	./$(BINARY) input output
+	./$(BINARY) input.ew output
 
 build-and-run: build run
 

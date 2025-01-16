@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdarg>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -32,6 +33,8 @@ nodeType* con(const char* value);
 void freeNode(nodeType* p);
 
 extern int ex(nodeType* p, bool push = true);
+extern void ProcessImports(const std::string& filename);
+extern bool CheckExtension(const std::string& filename);
 %}
 
 %union {
@@ -261,21 +264,38 @@ int yyerror(const char* s) {
 }
 
 int main(int argc, char** argv) {
-    if (argc >= 2) {
-        assert(yyin == NULL);
-        yyin = fopen(argv[1], "r");
+    if (argc == 1) {
+        throw std::runtime_error("provide an input file");
     }
+
+    std::string converted = std::string(argv[1]);
+
+    if (!std::filesystem::exists(converted)) {
+        throw std::runtime_error("input file does not exist");
+    }
+
+    std::string mergedFile = std::string(argv[1]) + "_processed";
+    assert(yyin == NULL);
+    
+    ProcessImports(converted);
+    yyin = fopen(mergedFile.c_str(), "r");
 
     if (argc >= 3) {
         outputFile = std::string(argv[2]);
         outputPtr = new std::ofstream(outputFile);
     }
 
-    yyparse();
-    closeStreams();
+    try {
+        yyparse();
+        closeStreams();
 
-    VirtualMachine vm;
-    vm.Run();
+        VirtualMachine vm;
+        vm.Run();
+    } catch (std::exception& e) {
+        std::cerr << e.what() << "\n";
+    }
+
+    std::filesystem::remove(mergedFile);
 
     return 0;
 }
