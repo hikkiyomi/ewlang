@@ -18,7 +18,7 @@ public:
 public:
     virtual VmNodeType GetNodeType() const = 0;
     virtual std::string Value() const = 0;
-    virtual void Negate() = 0;
+    virtual std::shared_ptr<VmNode> Negate() = 0;
 
 public:
     virtual std::shared_ptr<VmNode> operator+(const VmNode& other) const = 0;

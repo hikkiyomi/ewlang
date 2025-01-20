@@ -731,7 +731,6 @@ void RemoveDeadCode(std::vector<Instruction>* instructionsPtr, std::unordered_ma
 
 void VirtualMachine::Optimize()
 {
-    ApplyConstantFolding(&_instructions, &_marks);
     RemoveDeadCode(&_instructions, &_marks);
 }
 
@@ -913,7 +912,9 @@ void VirtualMachine::Execute()
             }
 
             std::shared_ptr<VmNode> lhs = _values.back().lock();
-            lhs->Negate();
+
+            frame.objects.push_back(lhs->Negate());
+            _values.push_back(frame.objects.back());
 
             break;
         }

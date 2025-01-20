@@ -20,7 +20,7 @@ public:
 
     std::string Value() const override;
 
-    void Negate() override;
+    std::shared_ptr<VmNode> Negate() override;
 
     BigInteger RealValue() const;
 
@@ -59,55 +59,61 @@ public:
     ~ArrayNode() override = default;
 
 public:
-    void Negate() override {
+    std::shared_ptr<VmNode> Negate() override
+    {
         throw std::runtime_error("bad operation with array");
     };
 
 public:
-    std::shared_ptr<VmNode> operator+(const VmNode& other) const override {
+    std::shared_ptr<VmNode> operator+(const VmNode& other) const override
+    {
         throw std::runtime_error("bad operation with array");
     }
 
-    std::shared_ptr<VmNode> operator-(const VmNode& other) const override {
+    std::shared_ptr<VmNode> operator-(const VmNode& other) const override
+    {
         throw std::runtime_error("bad operation with array");
     }
 
-    std::shared_ptr<VmNode> operator*(const VmNode& other) const override {
+    std::shared_ptr<VmNode> operator*(const VmNode& other) const override
+    {
         throw std::runtime_error("bad operation with array");
     }
 
-    std::shared_ptr<VmNode> operator/(const VmNode& other) const override {
+    std::shared_ptr<VmNode> operator/(const VmNode& other) const override
+    {
         throw std::runtime_error("bad operation with array");
     }
 
-    std::shared_ptr<VmNode> operator%(const VmNode& other) const override {
+    std::shared_ptr<VmNode> operator%(const VmNode& other) const override
+    {
         throw std::runtime_error("bad operation with array");
     }
 
 public:
-    bool operator<(const VmNode& other) const override {
+    bool operator<(const VmNode& other) const override
+    {
         throw std::runtime_error("bad operation with array");
     }
 
-    bool operator>(const VmNode& other) const override {
+    bool operator>(const VmNode& other) const override
+    {
         throw std::runtime_error("bad operation with array");
     }
 
-    bool operator<=(const VmNode& other) const override {
+    bool operator<=(const VmNode& other) const override
+    {
         throw std::runtime_error("bad operation with array");
     }
 
-    bool operator>=(const VmNode& other) const override {
+    bool operator>=(const VmNode& other) const override
+    {
         throw std::runtime_error("bad operation with array");
     }
 
-    bool operator!=(const VmNode& other) const override {
-        throw std::runtime_error("bad operation with array");
-    }
+    bool operator!=(const VmNode& other) const override;
 
-    bool operator==(const VmNode& other) const override {
-        throw std::runtime_error("bad operation with array");
-    }
+    bool operator==(const VmNode& other) const override;
 
 public:
     VmNodeType GetNodeType() const override;
