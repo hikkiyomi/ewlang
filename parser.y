@@ -56,7 +56,7 @@ extern bool CheckExtension(const std::string& filename);
 %left '*' '/' '%'
 %nonassoc UMINUS
 
-%type <nPtr> stmt expr stmt_list expr_list variable_list multiple_assignment
+%type <nPtr> stmt expr stmt_list expr_list variable_list arg_list multiple_assignment
 
 %%
 
@@ -134,11 +134,17 @@ stmt_list:
          | stmt_list stmt   { $$ = opr(';', 2, $1, $2); }
          ;
 
+arg_list:
+        arg_list ',' expr { $$ = opr('&', 2, $1, $3); }
+        | expr            { $$ = opr('&', 1, $1); }
+        |                 { $$ = opr('&', 0); }
+        ;
+
 expr:
     INTEGER                                { $$ = con($1); }
     | VARIABLE                             { $$ = id($1); }
     | LENGTH '(' VARIABLE ')'              { $$ = opr(LENGTH, 1, id($3)); }
-    | VARIABLE '(' arg_list ')'            { $$ = opr(CALL, 2, id($1), functionArgs); }             
+    | VARIABLE '(' arg_list ')'            { $$ = opr(CALL, 2, id($1), $3); }             
     | VARIABLE '[' expr ']'                { $$ = opr(ACCESS, 2, id($1), $3); }
     | '-' expr %prec UMINUS                { $$ = opr(UMINUS, 1, $2); }
     | expr '+' expr                        { $$ = opr('+', 2, $1, $3); }
@@ -156,12 +162,6 @@ expr:
     | expr BIN_OR expr                     { $$ = opr(BIN_OR, 2, $1, $3); }
     | '(' expr ')'                         { $$ = $2; }
     ;
-
-arg_list:
-        arg_list ',' expr { functionArgs.push_back($3); }
-        | expr            { functionArgs = std::vector<nodeType*>{$1}; }
-        |                 { functionArgs.clear(); }
-        ;
 
 return_list:
            return_list ',' expr { returnList.push_back($3); }
@@ -200,14 +200,7 @@ nodeType* opr(int oper, int nops, ...) {
 
     va_start(ap, nops);
 
-    if (oper == CALL) {
-        nodeType* identifier = va_arg(ap, nodeType*);
-        const auto& args = va_arg(ap, std::vector<nodeType*>);
-
-        opr->op = args;
-        opr->op.push_back(identifier);
-        opr->nops = args.size() + 1;
-    } else if (oper == RETURN) {
+    if (oper == RETURN) {
         const auto& returns = va_arg(ap, std::vector<nodeType*>);
         opr->op = returns;
         opr->nops = returns.size();
